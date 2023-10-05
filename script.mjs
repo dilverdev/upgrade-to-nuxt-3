@@ -5,8 +5,17 @@
 import { readdir, readFile, writeFile } from "fs/promises";
 
 cd("../");
+
 let { name } = await fs.readJson("./package.json");
 console.log(`Migrando ${name} a Nuxt 3...`);
+
+const removeAllDsStore = async () => {
+  try {
+    await $`find . -name ".DS_Store" -delete`;
+  } catch (error) {
+    console.error("Error", error)
+  }
+}
 
 // Borrado de paquetes y archivos
 const deletePkg = async () => {
@@ -25,6 +34,7 @@ const deletePkg = async () => {
         await $`rm ${file.name}`;
       }
     } catch (error) {
+      console.error("Error", error)
     }
   }
 };
@@ -34,6 +44,7 @@ const folderBackup = async () => {
   try {
     await $`mkdir ./.nuxt-old/backup/`;
   } catch (error) {
+    console.error("Error", error)
   }
 
   const listBackup = [
@@ -52,6 +63,7 @@ const folderBackup = async () => {
         await $`mv ./.nuxt-old/backup/${file.name} ./.nuxt-old/backup/old.${file.name}`;
       }
     } catch (error) {
+      console.error("Error", error)
     }
   }
 };
@@ -78,6 +90,7 @@ declare module '@vue/runtime-core' {
     await writeFile("types/index.d.ts", constentType);
     console.log("Archivo creado exitosamente!");
   } catch (error) {
+    console.error("Error", error);
   }
 };
 
@@ -125,7 +138,7 @@ const installPkg = async () => {
       await $`yarn add -D ${pkg}`;
       console.log(`${pkg} installed successfully!`);
     } catch (e) {
-      console.log(`Error installing ${pkg}: ${e}`);
+      console.error(`Error installing ${pkg}: ${e}`);
     }
   }
 };
@@ -141,6 +154,7 @@ const createFolderNuxt3 = async () => {
     try {
       await $`mv ${item.from} ${item.to}`;
     } catch (error) {
+      console.error("Error", error)
     }
   }
 };
@@ -154,8 +168,8 @@ const appVue = async () => {
 
   try {
     imports = await $`cat ${filename} | grep '^import'`;
-  } catch (e) {
-    console.log("no hay imports");
+  } catch (error) {
+    console.error("no hay imports", error);
   }
 
   try {
@@ -188,28 +202,32 @@ export default {
     }
 
   } catch (error) {
-    console.log(error);
+    console.error("Error", error)
   }
 };
 
 // nuxt.config.js
 const nuxtConfig = async () => {
   const filename = "nuxt.config.ts";
-  let content = readFile(filename, "utf-8");
 
-  // Reemplaza export default por export default defineNuxtConfig({
-  content = content.replace("export default {", "export default defineNuxtConfig({");
-  content = content.replace("head,", `app: {
+  try {
+    let content = await readFile(filename, "utf-8");
+    console.log(content)
+    console.log(filename)
+    // Reemplaza export default por export default defineNuxtConfig({
+    content = content.replace("export default {", "export default defineNuxtConfig({");
+    content = content.replace("head,", `app: {
     head,
-  },`);
+},`);
+    // Agrega el paréntesis al final del archivo
+    content = `${content}\n)`;
 
-  // Agrega el paréntesis al final del archivo
-  content = `${content}\n)`;
-
-  // Escribe el archivo modificado
-  fs.writeFileSync(filename, content, "utf-8");
-
-  console.log("Archivo modificado correctamente");
+    // Escribe el archivo modificado
+    fs.writeFileSync(filename, content, "utf-8");
+    console.log("Archivo modificado correctamente");
+  } catch (error) {
+    console.error("Error", error)
+  }
 };
 
 // update plugins
@@ -360,8 +378,8 @@ const updateStoreToPinia = async () => {
     let imports = "";
     try {
       imports = await $`cat ${file} | grep '^import'`;
-    } catch (e) {
-      console.log("no hay imports");
+    } catch (error) {
+      console.error("Error: no hay imports", error)
     }
 
     // let fileContent = await readFile(file, "utfº-8");
@@ -409,18 +427,19 @@ const updateStoreToPinia = async () => {
   try {
     await loopFiles("store");
   } catch (error) {
-    console.log("Error", error);
+    console.error("Error", error)
   }
 };
 
 // Ejecución de funciones
-await deletePkg();
-await folderBackup();
+await removeAllDsStore()
+// await deletePkg();
+// await folderBackup();
 // await installPkg();
-await createFolderNuxt3();
-await folderType();
-await appVue();
-await nuxtConfig();
+// await createFolderNuxt3();
+// await folderType();
+// await appVue();
+// await nuxtConfig();
 await updatePlugins();
 await updateMiddlewares();
 // await updateStoreToPinia();
